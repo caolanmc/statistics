@@ -1,0 +1,482 @@
+---
+title: "Gapminder Data Wrangling"
+author: "Caolan McDonagh, id=21249929"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_document
+---
+
+An essential skill when working with data is the ability to get the data into tidy form, ready for analysis.  You will find that time and time again you need to correct the data and having code ready to do so will save you a lot of time and will keep track on what you have done with the original data.
+
+In this lab you will be introduced to useful tips and tricks to get data into shape.  There are many ways to write code for data management tasks, one of which is using the tidyverse package, a nice collection of tools which are intuitive. 
+
+Let's start by loading the tidyverse package.
+
+
+```{r}
+### run install.packages("tidyverse") in your R console if you don't have the package installed. 
+library(tidyverse)
+
+```
+
+The gapminder data that you will be working on is contained in the gapminder package.  This mean that you don't need to load the data in as a separate file. 
+
+The Gapminder Foundation is a Swedish NGO which promotes sustainable global development by increased use and understanding of statistics about social, economic and environmental development. It collects more than 200 Indicators displaying the trends in some cases back to the year 1800 and updating and refined constantly.  You can explore this resource at https://www.gapminder.org/ .
+
+Hans Rosling was Professor of International Health at the Karolinska Institutet in Stockholm, Sweden and founded the Gapminder Foundation. He gave a famous TED talk, "The Best Stats You've Ever Seen" which is well worth watching.  To visualise his talk, he and his team at Gapminder developed animated bubble charts, aka motion charts. 
+
+To access this data you need to install `gapminder` package in R by running command `install.packages("gapminder")` in your R console and then load the package as follows:
+
+```{r}
+### run install.packages("gapminder") in your R console if you don't have the package installed. 
+library(gapminder)
+
+```
+
+The data are comprised of six variables:
+
+1. country	
+2. continent	
+3. year	
+4. lifeExp	(life expectancy at birth)
+5. pop	(total population)
+6. gdpPercap	(per-capita GDP)
+
+You can see this by running the `names` command.:
+
+```{r}
+
+names(gapminder)
+```
+
+Let’s save the data to a dataframe called `gapminder.df`, where the .df will remind you that it is a dataframe.
+
+```{r}
+gapminder.df <- gapminder
+```
+
+
+There are several ways of viewing a dataset in R; you'll have seen me do this in lectures. One way is to use RStudio's data viewer. To do so, you can: 
+
+- click on the `gapminder.df` variable in the "Environment" tab  
+- or run command `View(gapminder.df)` on your R console.
+
+Sometimes it's also helpful to look at data (or part of it) in the console instead of the data viewer, particularly for large data sets. 
+
+Here are some useful functions: 
+
+### `head()`
+
+Without any extra arguments specified, `head()` shows the top six rows of the data. 
+
+```{r}
+
+head(gapminder.df)
+
+```
+
+### `glimpse()`
+
+`glimpse()` is helpful when the data frame has many columns. The data is shown in a transposed way with columns as rows. 
+
+```{r }
+glimpse(gapminder.df)
+```
+
+### `distinct()`
+
+`distinct()` shows all the distinct values for a character or factor column. 
+
+```{r }
+gapminder.df %>% 
+  distinct(continent)
+```
+
+### `count()`
+
+`count()` shows a count of all the different distinct values in a column. 
+
+```{r }
+gapminder.df %>% 
+  count(continent)
+```
+
+It's possible count the number of observations across a combination of several variables. For example, if we wanted to tally `country` within `continent` and display the results for the first 10 countries we can do it by specifying both variables of interest in `count()` as follows:
+
+
+```{r }
+gapminder.df %>% 
+  count(continent, country) %>% 
+  head(n = 10)
+```
+
+Before we can summarise and visualise data there are invariably data 'wrangling' (i.e. cleaning, reshaping, filtering, etc) steps that need to be carried out.  This will be the case in virtually all analyses you carry out as the data will very rarely be clean and fit for purpose.
+
+## Wrangling data 
+
+We use the functions in the package `dplyr` (which loads with `tidyverse`) which contains a lot of useful functions to tidy data. 
+Let's start with filtering where subsets of the data are extracted as required.
+
+### `filter()`
+
+The `filter()` function is used to apply logical (and other) operators to subset the data. 
+
+For example, to filter out the Ireland data use filter with a double == (a single = is typically used to assign an object) as follows:
+
+```{r }
+
+gapminder.df %>% 
+  filter(country == 'Ireland')
+
+```
+
+We can combine multiple conditions in the same call. In the chunk below I've filtered out Ireland data for years that life expectancy is greater than the median life expectancy (i.e. they are in the top 50 percentile), and `gdpPercap` was not missing.  Note that missing values in R are represented as `NA` and that an exclamation mark `!` represents 'not'. The function below can be read as 'start with the gapminder dataframe then filter out Ireland, and then filter out all life expectancy that are bigger than the median life expectancy and then filter out those that don't have a missing value for `gdpPercap`
+
+```{r }
+gapminder.df %>% 
+  filter(country == 'Ireland' &
+         lifeExp > median(lifeExp, na.rm = TRUE) &
+         !is.na(gdpPercap))
+```
+
+The `na.rm=TRUE` is important.  Many functions like `mean()`, `median()`, `var()`, `sd()`, `sum()` have the argument `na.rm` which tells R what to do in that function when it encounters missing values.  It is set to `FALSE` by default. In the example above it is set to `TRUE` which means that the `NA` values are ignored (i.e. ignore missing data), and the `median()` is calculated based on values that are observed.
+
+Logical operators play an important role in R programming to combine two or more conditions and to perform the logical operations using & (Logical AND), | (Logical OR) and ! (Logical NOT).
+
+The symbol `&` represents AND,	which returns true when both conditions are truewhile the symbol `|`	represents OR,	which returns true when at-least one of the condition is true.
+
+You can use `|` and `&` interchangeably in `filter()`. Make sure to use parentheses when combining several logical operators to indicate which logical operation should be performed first.
+
+See if you can figure out what data are being filtered using the follows commands:
+
+```{r }
+
+gapminder.df %>% 
+  filter((country %in% c("Ireland", "Singapore") | year == "2007") & lifeExp > 75)
+
+```
+
+The commands will filter gapminder data that are either blong to `"Ireland"` or `"Singapore"`, or those from 2007, and but those where the life expectancy is at least 75. The quotes are important as they are needed to highlight that the values in question are levels of a categorical variable.
+
+The `%in%` operator is useful when there are multiple options you could filter on.  An alternative way to write `country %in% c("Ireland", "Singapore")` is to write `country == "Ireland" | country == "Singapore"` but this gets cumbersome as the number of options increases. 
+
+```{r }
+
+gapminder.df %>% 
+  filter((country == "Ireland" | country == "Singapore" | year == "2007") & lifeExp > 75)
+
+```
+
+
+Let's look at some other useful functions to rename and create variables.
+
+### `rename()` 
+
+`rename()` renames column names.
+
+```{r }
+gapminder.df %>% 
+  rename(lifeExpectancy = lifeExp,
+         Population = pop )
+```
+
+The new variable names goes on the LHS of the`=` sign, and the old name on the RHS (i.e. new_name = old_name) 
+
+
+### `select()` 
+
+`select()` allows you to select just those variables needed.  
+
+
+```{r }
+gapminder.df %>% 
+  select(country, year , lifeExp)
+```
+
+We can select multiple columns using the `(from:to)` syntax. For example, if you only needed the variables from country to lifeExp:
+
+```{r }
+gapminder.df  %>%  
+  select(country:lifeExp)
+```
+
+
+We can also _deselect_ (multiple) columns:
+
+```{r }
+gapminder.df %>% 
+  select(-continent, -(pop:gdpPercap))
+
+```
+
+Other examples include selecting columns by partially matching the column name e.g. every column that contains the character "p"
+
+```{r }
+gapminder.df %>% 
+  select(contains("p"))
+```
+
+or every column that starts with a "c"
+
+```{r data-wrangling1-51}
+gapminder.df %>% 
+  select(starts_with("c")) 
+```
+
+You can also use `select()` to reorder the columns, for example changing the column order, now continent is at the beginning
+
+```{r }
+
+gapminder.df %>% 
+  select(continent, everything())
+```
+
+Here, the `continent` column is moved to the beginning of the data frame. `everything()` is a helper function which selects all the columns. 
+
+To move a variable to the end, start by deselecting it and then moving it.  For example, to move continent to the end of the dataframe:
+
+```{r }
+gapminder.df %>% 
+  select(-continent , everything(), continent) 
+```
+
+You can select columns based on their data type using `select_if()`. To select all variables that are numeric:
+
+```{r }
+gapminder.df %>% 
+  select_if(is.numeric) 
+```
+
+The `mutate()` function is used to change existing variables or to make new ones.
+
+### `mutate()` 
+
+Let's convert the population to a unit of 1,000,000(i.e. pop/1,000,000) for all rows in the dataframe. 
+
+```{r }
+
+gapminder.df %>% 
+  mutate(pop_milion = pop / 1000000) %>%
+  select(country, year , pop , pop_milion)
+
+```
+
+A useful helper function for `mutate()` is `ifelse()`. `ifelse()` works in the following way: start by specifying the condition, then what should be returned if the condition is true, and finally what should be returned otherwise. Here is an example: 
+
+```{r }
+
+gapminder.df %>% 
+  mutate(pop_categorical = ifelse(pop > median(pop, na.rm = T), "large", "small")) %>% 
+  select(country, year , pop , pop_categorical)
+
+```
+
+Let's go through this in a bit more detail. The code can be read as 'start with the gapminder data then create a new variable called 'pop_categorical' where rows with population bigger than the median are coded as large otherwise they are coded as small then select country, year , pop , pop_categorical variables in the data. 
+
+There are a number of ways to sort and arrange data.
+
+### `arrange()` 
+
+`arrange()` allows you to sort the values in a data frame by one or more column entries. 
+
+```{r }
+
+gapminder.df %>% 
+  arrange(lifeExp, desc(year))
+
+```
+
+Here, the data frame is sorted first by `lifeExp` and then by `year`. Note that the `desc()` function will sort `year` in descending order. 
+
+
+### `summarise()`
+One of the most common task, in all data analyses, is to calculate summary statistics of variables of interest. The
+`summarise()` function in the dplyr package, if applied to the whole dataset, provides users with an elegant way of summarising data into single summaries.
+
+The code below summarise the main numerical summaries (i.e. n, min, max, mean, sd and var) for the life expectancy across all countries and all years. 
+
+```{r}
+gapminder.df %>%
+  summarise(n=n(),
+            min=min(lifeExp),
+            mean(lifeExp),
+            sd(lifeExp),
+            var(lifeExp),
+            max=max(lifeExp))
+
+```
+
+### `group_by()`
+There is often interested in comparing summary statistics across different groups or categories in a dataset. For example, there may be interest in the average life expectancy across different continents, or maybe in
+more detail, the average life expectancy across different continents and different years.
+
+This is where the `group_by()` function helps in answering such questions. In fact, the `group_by()` function allows
+different layers from the dataset to be built and then the `summarise()` function can be applied to each layer
+
+```{r}
+# the average life expectancy across different continents
+gapminder.df %>%
+  group_by(continent) %>%
+  summarise(n=n(),
+            min=min(lifeExp),
+            mean(lifeExp),
+            sd(lifeExp),
+            var(lifeExp),
+            max=max(lifeExp))
+
+```
+
+or in more detail
+```{r}
+# the average life expectancy across different continents and different years 
+gapminder.df %>%
+  group_by(continent, year) %>%
+  summarise(n=n(),
+            min=min(lifeExp),
+            mean(lifeExp),
+            sd(lifeExp),
+            var(lifeExp),
+            max=max(lifeExp))
+
+```
+
+
+Have a go at these exercises.  
+
+### Exercise 1 
+
+Use the count function to tally the number of years for each country
+
+```{r }
+
+#gapminder.df %>% count(country,year)
+#The above does not group the countries, so I used the below.
+
+gapminder.df %>%
+group_by(country) %>%
+  summarise(countOfYears = n_distinct(year))
+
+```
+
+
+### Exercise 2 
+
+Filter out the `lifeExp` for `United States` in `2007`.
+
+
+```{r }
+gapminder.df %>% group_by(country) %>% filter(!(year == "2007" & country == "United States"))
+#Logical operator to remove the required data within filter. Removing '!' shows just US data from 2007.
+
+#Or showing just LifeExp for US in 2007:
+
+gapminder.df %>% group_by(country) %>% filter(year == "2007" & country == "United States")
+
+```
+
+
+### Exercise 3
+
+Use the count function to identify the continent that has the least data. (Hint, the count function has an argument called sort which is set to FALSE by default).
+
+```{r }
+gapminder.df %>%  count(continent, sort = TRUE,)
+#Oceania
+```
+
+### Exercise 4
+
+Which country has the highest Life expectancy over all years on average?
+
+```{r }
+gapminder.df %>%
+  group_by(country) %>%
+  summarise(n=n(),
+            min=min(lifeExp),
+            mean = mean(lifeExp),
+            sd(lifeExp),
+            var(lifeExp),
+            max=max(lifeExp)) %>% 
+  arrange(desc(mean))
+#Iceland at 81.757 years.
+
+
+
+```
+
+
+### Exercise 5
+
+Create a new variable called gdpPercap_categorical which classifies rows as 'Below Average gdpPercap' or 'Above Average gdpPercap' depending on whether gdpPercap is maller (or larger) than the mean gdpPercap.
+
+```{r }
+
+gdpPerCapMean <- mean(gapminder.df$gdpPercap)
+
+gapminder.df$gdpPercap_categorical <- ifelse(gapminder.df$gdpPercap > gdpPerCapMean, 'Above Average gdpPercap','Below Average gdpPercap')
+
+gapminder.df
+
+#Get mean -> Use ifelse to check if the current gdpPerCap is above or below and apply value accordingly
+
+```
+
+### Exercise 6
+
+Create a table of how many values are 'Below Average gdpPercap' and 'Above Average gdpPercap'.
+
+```{r }
+belowAverageGDP <- filter(gapminder.df, gdpPercap_categorical=='Below Average gdpPercap')
+
+aboveAverageGDP <- filter(gapminder.df, gdpPercap_categorical=='Above Average gdpPercap')
+
+head(belowAverageGDP)
+head(aboveAverageGDP)
+
+#Use filter to create new df with appropriate data.
+```
+
+### Exercise 7
+
+Replicate Exercises 5 and 6 but this time do it within each continent. It means, within each continent, compare the gdpPercap with the average of gdpPercap within that continent and classify it as 'Below Average gdpPercap' or 'Above Average gdpPercap' and then create within each continent how many countries are above and below the average. 
+
+```{r }
+
+gapminder.df <- gapminder
+
+continentMeans <- aggregate(x=gapminder.df$gdpPercap,
+          by =list(gapminder.df$continent),
+          FUN = mean)
+names(continentMeans)[1] <- "continent"
+
+gapminder.df <- gapminder.df %>% inner_join(continentMeans, by = 'continent') 
+
+gapminder.df$gdpPercap_categorical <- ifelse(gapminder.df$gdpPercap > gapminder.df$x, 'Above Average gdpPercap','Below Average gdpPercap')
+
+continentMeans
+gapminder.df
+
+#Create df of the mean gdpPerCap per country via aggregate. Merge these two df via inner_join. Compare the mean and given gdpPerCap with ifElse.
+
+```
+
+### Exercise 8
+
+A lot of how you will use R is to look up the web for help on how to solve problems.  There are so many resources out there, some are listed at the end of this document. The challenge is to find out how to use the `case_when()` function.  
+
+See if you can use it use the `lifeExp` variable to categorise rows using the following rules:
+
+under 40, [40,60], [60,80], above 80.
+
+```{r }
+
+gapminder.df %>% mutate(lifeExpRange = case_when(lifeExp<40 ~ "40", 
+                                                 lifeExp >= 40 & lifeExp <= 60 ~ "[40,60]",
+                                                 lifeExp >= 60 & lifeExp <= 80 ~ "[60,80]",
+                                                 lifeExp>80 ~ "80"))
+
+
+ #Mutate to add new column, case_when for each of the ranges.
+```
+
+
+
